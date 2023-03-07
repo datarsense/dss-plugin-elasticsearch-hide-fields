@@ -1,0 +1,38 @@
+# This workflow will build a Java project with Ant
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-ant
+
+name: Java CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+
+env:
+  DSS_VERSION: 11.3.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+    - name: Build with Ant
+      run: |
+        wget -q https://downloads.dataiku.com/public/studio/$DSS_VERSION/dataiku-dss-$DSS_VERSION.tar.gz
+        tar -zxf dataiku-dss-$DSS_VERSION.tar.gz  dataiku-dss-$DSS_VERSION/dist
+        tar -zxf dataiku-dss-$DSS_VERSION.tar.gz  dataiku-dss-$DSS_VERSION/lib
+        export DKUINSTALLDIR=$(pwd)/dataiku-dss-$DSS_VERSION
+        ant -noinput -buildfile build.xml
+    - name: 'Upload Artifact'
+      uses: actions/upload-artifact@v3
+      with:
+        name: dss-plugin-elasticsearch-hide-fields
+        path: java-lib/dss-plugin-elasticsearch-hide-fields.jar
+        retention-days: 5

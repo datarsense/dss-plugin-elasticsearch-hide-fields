@@ -1,0 +1,8 @@
+{
+    "meta" : {
+        "label": "Custom policy hook elasticsearch-hide-fields",
+        "description": "onPreObjectSave hook preventing Elasticsearch fields containing sensitive data to be viewed in DSS",
+        "icon": "icon-puzzle-piece"
+    },
+    "hooksClass": "com.dataiku.dip.plugins.elasticsearch_utils.elasticsearch_hide_fields_hooks"
+}

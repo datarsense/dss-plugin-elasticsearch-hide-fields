@@ -1,0 +1,15 @@
+.journal
+.mainlock
+.wlock
+.ts
+.git
+*.pyc
+.coverage
+.htmlcov
+.DS_Store
+.idea
+.vscode
+bin/
+java-build/
+java-lib/
+state.json
