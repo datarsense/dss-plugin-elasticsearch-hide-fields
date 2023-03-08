@@ -34,5 +34,6 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: dss-plugin-elasticsearch-hide-fields
-        path: java-lib/dss-plugin-elasticsearch-hide-fields.jar
-        retention-days: 5
+        path: |
+          ./
+          !java-build/
