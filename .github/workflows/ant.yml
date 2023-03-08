@@ -30,10 +30,11 @@ jobs:
         tar -zxf dataiku-dss-$DSS_VERSION.tar.gz  dataiku-dss-$DSS_VERSION/lib
         export DKUINSTALLDIR=$(pwd)/dataiku-dss-$DSS_VERSION
         ant -noinput -buildfile build.xml
+        rm -Rf dataiku-dss*
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v3
       with:
         name: dss-plugin-elasticsearch-hide-fields
         path: |
           ./
-          !java-build/
+          !./java-build/
