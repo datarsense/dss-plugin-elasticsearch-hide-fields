@@ -20,66 +20,43 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+
+import java.io.IOException;
 import java.util.List;
 
 
 public class elasticsearch_hide_fields_hooks extends CustomPolicyHooks {
     
-    private static DKULogger logger = DKULogger.getLogger("dku.plugins.elasticsearch.hooks");
+    private static DKULogger logger = DKULogger.getLogger("dku.plugins.elasticsearch-hide-fields.hooks");
+
+    private static MessageCode mc = new MessageCode() {
+        @Override
+        public String getCode() {
+            return "ERR_ES_DATASET_CREATION";
+        }
+
+        @Override
+        public String getCodeTitle() {
+            return "Cannot create dataset";
+        }
+
+        @Override
+        public FixabilityCategory getFixability() {
+            return FixabilityCategory.ADMIN_SETTINGS_PLUGINS;
+        }
+    };
     
     @Autowired private RegularPluginsRegistryService regularPluginsRegistryService;
 
     @Override
     public void onPreObjectSave(AuthCtx user, TaggableObject before, TaggableObject after) throws Exception {
-        MessageCode mc = new MessageCode() {
-            @Override
-            public String getCode() {
-                return "ERR_ES_DATASET_CREATION";
-            }
-
-            @Override
-            public String getCodeTitle() {
-                return "Cannot create dataset";
-            }
-
-            @Override
-            public FixabilityCategory getFixability() {
-                return FixabilityCategory.ADMIN_SETTINGS_PLUGINS;
-            }
-        };
-
         if(after.getClass() == SerializedDataset.class 
                 && this.isElasticSearchDataset((SerializedDataset)after)
                 && !((SerializedDataset)after).managed) {
             SerializedDataset ds = (SerializedDataset)after;
-            JsonElement dsConnectionElt = JsonParser.parseString(ds.getParams().getConnection());
 
-            // Find if dataset connection has been defined in a plugin preset
-            // If yes, extract the name of columns which have to be hidden
-            Boolean connectionFound = false;
-            String[] columnsList = new String[0];
-            List<PluginPreset> presets = regularPluginsRegistryService.getSettings("elasticsearch-hide-fields").presets;
-            for (PluginPreset p : presets) {
-                if (p.pluginConfig.has("es-connections") && p.pluginConfig.has("columns")) {
-                    JsonArray connections = p.pluginConfig.get("es-connections").getAsJsonArray(); 
-                    logger.info((Object)("DEBUGCODE " + p.pluginConfig.toString()));
-
-                    // Throw an error if ES connection if found in more than one preset
-                    if(connectionFound && connections.contains(dsConnectionElt.getAsJsonPrimitive())) {
-                        throw new CodedException(mc, "Connection " + dsConnectionElt.getAsJsonPrimitive().getAsString() + " is defined in multiple elasticsearch-hide-fields plugin presets. Unable to define which preset has to be used. Please contact a DSS administrator.");
-                    }
-
-                    // Extract columns to hide for the first connection in presets matching ES connection name
-                    if(!connectionFound && connections.contains(dsConnectionElt.getAsJsonPrimitive())) {
-                        connectionFound = true;
-                        String columns = p.pluginConfig.get("columns").getAsString();
-                        columnsList = columns.length() > 0 ? columns.split(",") : new String[0];
-                    }
-
-                }
-            }
+            String[] columnsList = getColumnsListToHide(ds);
             
-
             // If the list contains at least one column name check if dataset schema contains columns mapped in the ES index template
             if (columnsList.length > 0) {
                 // Get Elasticsearch dataset cutsom query DSL
@@ -154,6 +131,35 @@ public class elasticsearch_hide_fields_hooks extends CustomPolicyHooks {
             if (json.get(i).getAsString().equals(value)) return true;
         }
         return false;
+    }
+
+    private String[] getColumnsListToHide(SerializedDataset ds) throws CodedException,IOException {
+        JsonElement dsConnectionElt = JsonParser.parseString(ds.getParams().getConnection());
+        Boolean connectionFound = false;
+        String[] columnsList = new String[0];
+        List<PluginPreset> presets = regularPluginsRegistryService.getSettings("elasticsearch-hide-fields").presets;
+
+        // Find if dataset connection has been defined in a plugin preset
+        // If yes, extract the name of columns which have to be hidden
+        for (PluginPreset p : presets) {
+            if (p.pluginConfig.has("es-connections") && p.pluginConfig.has("columns")) {
+                JsonArray connections = p.pluginConfig.get("es-connections").getAsJsonArray(); 
+                logger.info((Object)("DEBUGCODE " + p.pluginConfig.toString()));
+
+                // Throw an error if ES connection if found in more than one preset
+                if(connectionFound && connections.contains(dsConnectionElt.getAsJsonPrimitive())) {
+                    throw new CodedException(mc, "Connection " + dsConnectionElt.getAsJsonPrimitive().getAsString() + " is defined in multiple elasticsearch-hide-fields plugin presets. Unable to define which preset has to be used. Please contact a DSS administrator.");
+                }
+
+                // Extract columns to hide for the first connection in presets matching ES connection name
+                if(!connectionFound && connections.contains(dsConnectionElt.getAsJsonPrimitive())) {
+                    connectionFound = true;
+                    String columns = p.pluginConfig.get("columns").getAsString();
+                    columnsList = columns.length() > 0 ? columns.split(",") : columnsList;
+                }
+            }
+        }
+        return columnsList;
     }
 
     @Override
