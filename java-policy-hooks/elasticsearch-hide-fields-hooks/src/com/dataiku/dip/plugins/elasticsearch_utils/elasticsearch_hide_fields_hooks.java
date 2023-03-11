@@ -48,7 +48,9 @@ public class elasticsearch_hide_fields_hooks extends CustomPolicyHooks {
             }
         };
 
-        if(after.getClass() == SerializedDataset.class && this.isElasticSearchDataset((SerializedDataset)after)) {
+        if(after.getClass() == SerializedDataset.class 
+                && this.isElasticSearchDataset((SerializedDataset)after)
+                && !((SerializedDataset)after).managed) {
             SerializedDataset ds = (SerializedDataset)after;
             JsonElement dsConnectionElt = JsonParser.parseString(ds.getParams().getConnection());
 
