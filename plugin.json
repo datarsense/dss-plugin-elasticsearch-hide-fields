@@ -11,19 +11,5 @@
         "licenseInfo": "Apache Software License"
     },
     
-    "params": [
-        {
-            "name": "columns",
-            "label": "Columns names",
-            "type": "STRING",
-            "mandatory": false,
-            "description": "Optional. Comma-separated list of columns containing sensitive data which does not have to to be displayed in DSS."
-        },
-        {
-          "name": "es-connections",
-          "label": "Elasticsearch connections",
-          "type": "CONNECTIONS",
-          "description": "Optional. Elasticsearch connections containing columns to hide"
-        }
-    ]
+    "params": []
 }

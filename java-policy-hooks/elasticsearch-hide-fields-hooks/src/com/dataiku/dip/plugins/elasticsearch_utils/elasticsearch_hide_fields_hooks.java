@@ -10,6 +10,7 @@ import com.dataiku.dip.coremodel.InfoMessage.FixabilityCategory;
 import com.dataiku.dip.coremodel.InfoMessage.MessageCode;
 import com.dataiku.dip.datasets.elasticsearch.ElasticSearchDatasetHandler;
 import com.dataiku.dip.exceptions.CodedException;
+import com.dataiku.dip.plugins.presets.PluginPreset;
 import com.dataiku.dip.plugins.RegularPluginsRegistryService;
 import com.dataiku.dip.server.services.TaggableObjectsService.TaggableObject;
 import com.dataiku.dip.server.datasets.DatasetSaveService.DatasetCreationContext;
@@ -19,6 +20,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import java.util.List;
 
 
 public class elasticsearch_hide_fields_hooks extends CustomPolicyHooks {
@@ -47,21 +49,37 @@ public class elasticsearch_hide_fields_hooks extends CustomPolicyHooks {
         };
 
         if(after.getClass() == SerializedDataset.class && this.isElasticSearchDataset((SerializedDataset)after)) {
-            // Get a list of columns defined in an ES index template
-            JsonObject pluginSettings = regularPluginsRegistryService.getSettings("elasticsearch-hide-fields").config;
-
-            boolean hasConnectionKey = pluginSettings != null && pluginSettings.has("es-connections");
-            JsonArray connections = hasConnectionKey ? pluginSettings.get("es-connections").getAsJsonArray() : null;
-
-            boolean hasColumnsKey = pluginSettings != null && pluginSettings.has("columns");
-            String columns = hasColumnsKey ? pluginSettings.get("columns").getAsString() : "";
-            String[] columnsList = columns.length() > 0 ? columns.split(",") : new String[0];
-
             SerializedDataset ds = (SerializedDataset)after;
             JsonElement dsConnectionElt = JsonParser.parseString(ds.getParams().getConnection());
 
+            // Find if dataset connection has been defined in a plugin preset
+            // If yes, extract the name of columns which have to be hidden
+            Boolean connectionFound = false;
+            String[] columnsList = new String[0];
+            List<PluginPreset> presets = regularPluginsRegistryService.getSettings("elasticsearch-hide-fields").presets;
+            for (PluginPreset p : presets) {
+                if (p.pluginConfig.has("es-connections") && p.pluginConfig.has("columns")) {
+                    JsonArray connections = p.pluginConfig.get("es-connections").getAsJsonArray(); 
+                    logger.info((Object)("DEBUGCODE " + p.pluginConfig.toString()));
+
+                    // Throw an error if ES connection if found in more than one preset
+                    if(connectionFound && connections.contains(dsConnectionElt.getAsJsonPrimitive())) {
+                        throw new CodedException(mc, "Connection " + dsConnectionElt.getAsJsonPrimitive().getAsString() + " is defined in multiple elasticsearch-hide-fields plugin presets. Unable to define which preset has to be used. Please contact a DSS administrator.");
+                    }
+
+                    // Extract columns to hide for the first connection in presets matching ES connection name
+                    if(!connectionFound && connections.contains(dsConnectionElt.getAsJsonPrimitive())) {
+                        connectionFound = true;
+                        String columns = p.pluginConfig.get("columns").getAsString();
+                        columnsList = columns.length() > 0 ? columns.split(",") : new String[0];
+                    }
+
+                }
+            }
+            
+
             // If the list contains at least one column name check if dataset schema contains columns mapped in the ES index template
-            if (connections != null && connections.contains(dsConnectionElt.getAsJsonPrimitive()) && columnsList.length > 0) {
+            if (columnsList.length > 0) {
                 // Get Elasticsearch dataset cutsom query DSL
                 String dsQueryDsl = ((ElasticSearchDatasetHandler.Config)ds.getParams()).customQueryDsl;
 
