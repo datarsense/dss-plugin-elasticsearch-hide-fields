@@ -1,0 +1,29 @@
+{
+    "meta" : {
+        "label": "Configure hidden ES columns per connection",
+        "description": "",
+        "icon": "icon-puzzle-piece"
+    },
+
+
+    "defaultDefinableInline": false,
+    "defaultDefinableAtProjectLevel": false,
+
+    "pluginParams": [
+        {
+            "name": "es-connections",
+            "label": "Elasticsearch connections",
+            "type": "CONNECTIONS",
+            "mandatory": true,
+            "description": "Optional. Elasticsearch connections containing columns to hide"
+        },
+        {
+            "name": "columns",
+            "label": "Columns to hide",
+            "type": "STRING",
+            "mandatory": true,
+            "description": "Optional. Comma-separated list of columns containing sensitive data which does not have to to be displayed in DSS."
+        }
+        
+    ]
+}
